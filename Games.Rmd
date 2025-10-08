@@ -1,0 +1,44 @@
+---
+title: "Est Prueba"
+author: "Mia Wayar"
+date: "2025-10-01"
+output: 
+  github_document: default
+  html_document: default
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_format = "all") })
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Lectura De Datos
+
+```{r}
+vgventas <- read.csv("vgsales.csv")
+head(vgventas)
+str(vgventas)
+summary(vgventas)
+```
+
+## Librerias
+
+You can also embed plots, for example:
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+#Trasformacion de los datos
+```{r}
+vgventas$Year <- as.integer(vgventas$Year)
+vgventas$Genre <- as.factor(vgventas$Genre)
+vgventas$Platform <- as.factor(vgventas$Platform)
+vgventas$Publisher <- as.factor(vgventas$Publisher)
+summary(vgventas)
+```
