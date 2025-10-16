@@ -1,0 +1,184 @@
+---
+title: "Tarea_Comparacioón_Muestras"
+author: "Mia Wayar"
+date: "2025-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Librerias
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+# Lectura de datos
+
+```{r}
+#Archivo Kaggle - vgsales
+vgventas <- read.csv("vgsales.csv",
+                 stringsAsFactors = F,na.strings = ".",header = T,sep=",")
+head(vgventas)
+str(vgventas)
+```
+
+# Transformacion de los datos
+
+```{r}
+vgventas$Year <- as.integer(vgventas$Year)
+vgventas$Genre <- as.factor(vgventas$Genre)
+vgventas$Platform <- as.factor(vgventas$Platform)
+vgventas$Publisher <- as.factor(vgventas$Publisher)
+summary(vgventas)
+```
+Calculemos la proporcion de los datos missings Esto nos ayudará a decidir la estrategia (borrar vs. llenar)
+
+```{r}
+# Contar NA por columna
+na_por_columna <- colSums(is.na(vgventas))
+print("NA por columna:")
+print(na_por_columna)
+
+# Porcentaje de NA por columna
+porcentaje_na <- colMeans(is.na(vgventas)) * 100
+print("Porcentaje de NA por columna:")
+print(round(porcentaje_na, 2))
+
+```
+
+```{r}
+unique(vgventas$Publisher)
+filter(vgventas, Publisher==" ")
+
+```
+
+Al año le faltan 271 valores (aprox 1,63%). Dado que este porcentaje es muy pequeño, la estrategia más segura y sencilla es eliminar estas filas. Intentar 'adivinar' (imputar) el año o la editorial podría generar interferencias y llevar a conclusiones incorrectas. Queremos que nuestro análisis se base en datos completos y precisos. Usaremos .dropna() para eliminar las filas que contienen valores NaN en las columnas especificadas.
+
+```{r}
+# DataFrame de ejemplo con missing values
+
+print("DataFrame original:")
+head(vgventas)
+cat("Filas originales:", nrow(vgventas), "\n\n")
+
+# Método 1: na.omit() - Elimina filas con cualquier NA
+df_sin_na <- na.omit(vgventas)
+print("Con na.omit():")
+head(df_sin_na)
+cat("Filas después de na.omit():", nrow(df_sin_na), "\n\n")
+
+# Método 2: complete.cases() - Más control
+df_completo <- vgventas[complete.cases(vgventas), ]
+print("Con complete.cases():")
+head(df_completo)
+cat("Filas después de complete.cases():", nrow(df_completo), "\n")
+```
+
+# Filtrar por videojuegos con ventas menores a dos millones
+
+```{r}
+ventas <- filter(vgventas, Global_Sales<2)
+summary(ventas)
+```
+
+# CREACIÓN DE LA VARIABLE Peso_NA 
+```{r}
+ventas$Peso_NA <- ventas$NA_Sales / ventas$Global_Sales
+poblacion_stats <- ventas %>%
+  summarise(
+    Media = mean(Peso_NA, na.rm = TRUE),
+    Mediana = median(Peso_NA, na.rm = TRUE),
+    Desviacion = sd(Peso_NA, na.rm = TRUE),
+    Minimo = min(Peso_NA, na.rm = TRUE),
+    Maximo = max(Peso_NA, na.rm = TRUE)
+  )
+
+poblacion_stats
+```
+
+# Elaborar 2 muestras aleatorias de tamaño 500, extraer sus estadísticas básicas y graficar sus distribuciones.
+
+```{r}
+set.seed(123) 
+muestra1 <- sample_n(ventas, 500)
+muestra2 <- sample_n(ventas, 500)
+
+# ESTADÍSTICAS DE CADA MUESTRA
+muestra1_stats <- muestra1 %>%
+  summarise(
+    Media = mean(Peso_NA, na.rm = TRUE),
+    Mediana = median(Peso_NA, na.rm = TRUE),
+    Desviacion = sd(Peso_NA, na.rm = TRUE),
+    Minimo = min(Peso_NA, na.rm = TRUE),
+    Maximo = max(Peso_NA, na.rm = TRUE)
+  )
+
+muestra2_stats <- muestra2 %>%
+  summarise(
+    Media = mean(Peso_NA, na.rm = TRUE),
+    Mediana = median(Peso_NA, na.rm = TRUE),
+    Desviacion = sd(Peso_NA, na.rm = TRUE),
+    Minimo = min(Peso_NA, na.rm = TRUE),
+    Maximo = max(Peso_NA, na.rm = TRUE)
+  )
+
+muestra1_stats
+muestra2_stats
+```
+
+# GRAFICAR DISTRIBUCIONES 
+# Histograma comparativo de las muestras y población
+```{r}
+ggplot() +
+  geom_histogram(data = ventas, aes(x = Peso_NA, y = ..density..),
+                 bins = 30, fill = "gray70", alpha = 0.5) +
+  geom_histogram(data = muestra1, aes(x = Peso_NA, y = ..density..),
+                 bins = 30, fill = "steelblue", alpha = 0.4) +
+  geom_histogram(data = muestra2, aes(x = Peso_NA, y = ..density..),
+                 bins = 30, fill = "darkorange", alpha = 0.4) +
+  labs(title = "Distribución de la variable Peso_NA",
+       x = "Peso_NA (NA_Sales / Global_Sales)",
+       y = "Densidad",
+       subtitle = "Comparación entre población y dos muestras") +
+  theme_minimal()
+
+# Boxplot comparativo
+df_muestras <- bind_rows(
+  ventas %>% mutate(Grupo = "Población"),
+  muestra1 %>% mutate(Grupo = "Muestra 1"),
+  muestra2 %>% mutate(Grupo = "Muestra 2")
+)
+
+ggplot(df_muestras, aes(x = Grupo, y = Peso_NA, fill = Grupo)) +
+  geom_boxplot(alpha = 0.6) +
+  labs(title = "Comparación de Peso_NA entre población y muestras") +
+  theme_minimal()
+```
+```{r}
+# COMPARACIÓN CON LA POBLACIÓN 
+comparacion <- rbind(
+  Poblacion = poblacion_stats,
+  Muestra1 = muestra1_stats,
+  Muestra2 = muestra2_stats
+)
+
+comparacion
+```
+
+
+# CONCLUSIONES Y OBSERVACIONES 
+Conclusiones:
+1. Las medias y medianas de las muestras son similares a las de la población,
+lo cual sugiere que ambas son representativas.
+2. Las desviaciones estándar también son parecidas, indicando variabilidad similar.
+3. Las distribuciones muestran ligeras diferencias debido al muestreo aleatorio,
+pero mantienen una forma general consistente.
+4. Como se vio en el gráfico de caja y bigotes (o bloxplot) las ventas en Norte America
+tanto para las dos muestras como para la problación la mediana es de 0.5, lo que indica 
+una fuerte importancia para las empresas en videojuegos las ventas en este continente 
+
+
